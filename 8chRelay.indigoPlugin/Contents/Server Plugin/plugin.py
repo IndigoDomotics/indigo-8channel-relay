@@ -336,7 +336,7 @@ class Plugin(indigo.PluginBase):
 
             # Update all the devices that belong to this hostname/port.
             for dev in devs:
-                chan = dev.pluginProps.get("channel", -1)
+                chan = dev.pluginProps.get("channel", "-1")
                 if (dev.pluginProps["hostname"], dev.pluginProps["port"]) != (host, port):
                     # Device does not match, carry on.
                     continue
