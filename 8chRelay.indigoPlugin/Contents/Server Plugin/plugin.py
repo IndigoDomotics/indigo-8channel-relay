@@ -341,9 +341,9 @@ class Plugin(indigo.PluginBase):
                     # Device does not match, carry on.
                     continue
                 if dev.deviceTypeId == "Relay":
-                    state = True if statuses.find(f"RELAYON {chan}") != -1 else False
+                    state = True if statuses.find(b"RELAYON " + chan.encode()) != -1 else False
                 elif dev.deviceTypeId == "Sensor":
-                    state = True if statuses.find(f"IH {chan}") != -1 else False
+                    state = True if statuses.find(b"IH " + chan.encode()) != -1 else False
                 if dev.deviceTypeId != "Sprinkler":
                     if dev.pluginProps.get("logChanges", True):
                         if dev.states["onOffState"] != state:
@@ -362,7 +362,7 @@ class Plugin(indigo.PluginBase):
                     except KeyError:
                         continue
                     # match the relay to a zone and update state & log
-                    state = True if statuses.find(f"RELAYON {chan}") != -1 else False
+                    state = True if statuses.find(b"RELAYON " + chan.encode()) != -1 else False
                     if (active_zone != zone and state is True and
                             (dev.pluginProps["PumpControlOn"] is False
                              or zone != int(dev.pluginProps["NumZones"]))):
