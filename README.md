@@ -5,8 +5,8 @@ being sold on eBay. This plugin also exposes the 8 on-board input sensors. You m
 find this plugin on the [Indigo Plugin Store](https://www.indigodomo.com/pluginstore/196/).
 
 This repo includes two technical documents:
-- [Ethnernet IO Controller V5  Instructions.pdf](docs/Ethnernet_IO_Controller_V5_Instructions.pdf)
-- [ZM_TCP Protocol 1.0.pdf](docs/ZM_TCP_Proctocol_1.0.pdf) (misspelled on purpose?)
+- [Ethnernet IO Controller V5  Instructions.pdf](docs/Ethnernet_IO_Controller_V5_Instructions.pdf) (misspelled on purpose?)
+- [ZM_TCP Protocol 1.0.pdf](docs/ZM_TCP_Proctocol_1.0.pdf)
 
 Both documents came from the retailer. Here's a link to the auction (until it goes away):
 - [eBay: 8 Channel Relay Network IP Relay Web Relay Dual Control Ethernet RJ45 US SHIP](https://www.ebay.com/itm/262874035942)

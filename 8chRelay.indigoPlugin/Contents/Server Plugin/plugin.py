@@ -1,5 +1,6 @@
 """ 8 Channel Network Relay Plugin for Indigo.
     First Release Date: Jan 16, 2018
+    Added to Indigo Open Source Library 2024-05-01
     Author: David Newhall II
     License: GPLv2
 """
@@ -7,7 +8,10 @@
 from datetime import datetime
 from telnetlib import Telnet
 import socket
-import indigo
+try:
+    import indigo
+except ImportError:
+    pass
 
 
 class Plugin(indigo.PluginBase):
@@ -21,7 +25,9 @@ class Plugin(indigo.PluginBase):
     def validateDeviceConfigUi(self, values, type_id, did):
         """ Validate the config for each sub device is ok. Set address prop. """
         errors = indigo.Dict()
+        channel = ""
         dev = indigo.devices[did]
+        prefix = ""
         props = dev.pluginProps
         if type_id != "Sprinkler":
             try:
@@ -38,19 +44,18 @@ class Plugin(indigo.PluginBase):
                     channel += ","
                 channel += str(values["zoneRelay"+str(zone)])
                 if values["zoneName"+str(zone)] == "":
-                    errors["zoneName"+str(zone)] = u"Zone name must not be empty!"
+                    errors["zoneName"+str(zone)] = "Zone name must not be empty!"
                     return (False, values, errors)
                 elif "," in values["zoneName"+str(zone)]:
-                    errors["zoneName"+str(zone)] = u"Zone name must not contain a comma!"
+                    errors["zoneName"+str(zone)] = "Zone name must not contain a comma!"
                     return (False, values, errors)
                 if zone_names != "":
                     zone_names += ","
                 zone_names += values["zoneName"+str(zone)]
             values["ZoneNames"] = zone_names
-        values["address"] = u"{} {}{}".format(props.get("hostname", values["address"]), prefix, channel)
+        values["address"] = f"{props.get('hostname', values['address'])} {prefix}{channel}"
         dev.replacePluginPropsOnServer(props)
         return (True, values)
-
 
     def getDeviceFactoryUiValues(self, dev_id_list):
         """ Called when the device factory config UI is first opened.
@@ -60,7 +65,7 @@ class Plugin(indigo.PluginBase):
         # Retrieve parameters stored in device 0"s props.
         if dev_id_list:
             dev = indigo.devices[dev_id_list[0]]
-            values["address"] = dev.pluginProps.get("hostname", u"192.168.1.166")
+            values["address"] = dev.pluginProps.get("hostname", "192.168.1.166")
             values["port"] = dev.pluginProps.get("port", 1234)
             values["NumZones"] = dev.pluginProps.get("NumZones", 1)
             values["PumpControlOn"] = dev.pluginProps.get("PumpControlOn", False)
@@ -89,12 +94,12 @@ class Plugin(indigo.PluginBase):
                     indigo.device.delete(dev)
                     if did not in values["createdDevices"].split(","):
                         # do not log if the device was added/removed in one shot.
-                        indigo.server.log(u"Deleted Device: {}".format(dev.name))
+                        indigo.server.log(f"Deleted Device: {dev.name}")
                     dev_id_list.remove(int(did))
         if values.get("irrigationController", False) is True and len(dev_id_list) < 1:
             dev = indigo.device.create(indigo.kProtocol.Plugin, deviceTypeId="Sprinkler")
-            dev.model = u"8 Channel Network Relay Board"
-            dev.subModel = u"Irrigation"
+            dev.model = "8 Channel Network Relay Board"
+            dev.subModel = "Irrigation"
             dev.replaceOnServer()
             dev_id_list.append(dev.id)
         for did in dev_id_list:
@@ -114,7 +119,7 @@ class Plugin(indigo.PluginBase):
                     if channel != "":
                         channel += ","
                     channel += str(props.get("zoneRelay"+str(zone), 0))
-            props["address"] = u"{} {}{}".format(props["hostname"], prefix, channel)
+            props["address"] = f"{props['hostname']} {prefix}{channel}"
             dev.replacePluginPropsOnServer(props)
         self.set_device_states()
         return values
@@ -132,7 +137,7 @@ class Plugin(indigo.PluginBase):
             pass
 
     def actionControlUniversal(self, action, dev):
-        """ Contral Misc. Actions here, like requesting a status update. """
+        """ Control Misc. Actions here, like requesting a status update. """
         if action.deviceAction == indigo.kUniversalAction.RequestStatus:
             self.set_device_states()
 
@@ -140,44 +145,46 @@ class Plugin(indigo.PluginBase):
         """ Callback Method to Control a Relay Device. """
         if action.deviceAction == indigo.kDeviceAction.TurnOn:
             try:
-                self.send_cmd(dev.pluginProps, u"L")
+                self.send_cmd(dev.pluginProps, "L")
             except (socket.error, EOFError) as err:
-                dev.setErrorStateOnServer(u"Error turning on relay device: {}".format(err))
+                dev.setErrorStateOnServer(f"Error turning on relay device: {err}")
             except KeyError:
-                dev.setErrorStateOnServer(u"Relay Channel Missing! Configure Device Settings.")
+                dev.setErrorStateOnServer("Relay Channel Missing! Configure Device Settings.")
             else:
                 dev.updateStateOnServer("onOffState", True)
                 if dev.pluginProps.get("logActions", True):
-                    indigo.server.log(u"Sent \"{}\" on".format(dev.name))
+                    indigo.server.log(f"Sent \"{dev.name}\" on")
         elif action.deviceAction == indigo.kDeviceAction.TurnOff:
             try:
-                self.send_cmd(dev.pluginProps, u"D")
+                self.send_cmd(dev.pluginProps, "D")
             except (socket.error, EOFError) as err:
-                dev.setErrorStateOnServer(u"Error turning off relay device: {}".format(err))
+                dev.setErrorStateOnServer(f"Error turning off relay device: {err}")
             except KeyError:
-                dev.setErrorStateOnServer(u"Relay Channel Missing! Configure Device Settings.")
+                dev.setErrorStateOnServer("Relay Channel Missing! Configure Device Settings.")
             else:
                 dev.updateStateOnServer("onOffState", False)
                 if dev.pluginProps.get("logActions", True):
-                    indigo.server.log(u"Sent \"{}\" off".format(dev.name))
+                    indigo.server.log(f"Sent \"{dev.name}\" off")
         elif action.deviceAction == indigo.kDeviceAction.Toggle:
-            command, reply, state = (u"L", "on", True)
+            command, reply, state = ("L", "on", True)
             if dev.states["onOffState"]:
-                command, reply, state = (u"D", "off", False)
+                command, reply, state = ("D", "off", False)
             try:
                 self.send_cmd(dev.pluginProps, command)
             except (socket.error, EOFError) as err:
-                dev.setErrorStateOnServer("Error toggling relay device: {}".format(err))
+                dev.setErrorStateOnServer(f"Error toggling relay device: {err}")
             except KeyError:
-                dev.setErrorStateOnServer(u"Relay Channel Missing! Configure Device Settings.")
+                dev.setErrorStateOnServer("Relay Channel Missing! Configure Device Settings.")
             else:
                 dev.updateStateOnServer("onOffState", state)
                 if dev.pluginProps.get("logActions", True):
-                    indigo.server.log(u"Sent \"{}\" {}".format(dev.name, reply))
+                    indigo.server.log(f"Sent \"{dev.name}\" {reply}")
 
     def actionControlSprinkler(self, action, dev):
         """ Control sprinklers! """
         az = 0
+        reply = ""
+        name = ""
         for zone in range(1, int(dev.pluginProps["NumZones"])+1):
             try:
                 zone_info = {
@@ -185,24 +192,23 @@ class Plugin(indigo.PluginBase):
                     "channel": dev.pluginProps["zoneRelay"+str(zone)],
                     "port": dev.pluginProps["port"],
                 }
-                cmd, reply, name = u"D", "off", dev.zoneNames[zone - 1]
+                cmd, reply, name = "D", "off", dev.zoneNames[zone - 1]
                 if action.sprinklerAction == indigo.kSprinklerAction.ZoneOn:
                     if zone == action.zoneIndex:
-                        cmd, reply, az = u"L", "on", zone
+                        cmd, reply, az = "L", "on", zone
                     if zone == int(dev.pluginProps["NumZones"]) and dev.pluginProps["PumpControlOn"]:
                         # Turn on the pump too.
-                        cmd, reply = u"L", "on"
+                        cmd, reply = "L", "on"
                 self.send_cmd(zone_info, cmd)
             except (socket.error, EOFError) as err:
-                dev.setErrorStateOnServer(u"Error turning {} sprinkler relay zone {} {}: {}"
-                                          .format(reply, zone, name, err))
+                dev.setErrorStateOnServer(f"Error turning {reply} sprinkler relay zone {zone} {name}: {err}")
                 return
             except KeyError:
-                dev.setErrorStateOnServer(u"Sprinkler relay channel missing for zone {} {}! Configure device settings."
-                                          .format(zone, name))
+                dev.setErrorStateOnServer(
+                    f"Sprinkler relay channel missing for zone {zone} {name}! Configure device settings.")
                 continue
             if dev.pluginProps.get("logActions", True):
-                indigo.server.log(u"Sent \"{} - {}\" {}".format(dev.name, name, reply))
+                indigo.server.log(f"Sent \"{dev.name} - {name}\" {reply}")
         dev.updateStateOnServer("unexpectedZone", "None")
         dev.updateStateOnServer("scheduleRunning", False if az == 0 else True)
         dev.updateStateOnServer("activeZone", az)
@@ -232,7 +238,7 @@ class Plugin(indigo.PluginBase):
         """ Devices.xml Callback Method to return all sub devices. """
         return_list = list()
         for did in dev_id_list:
-            name = indigo.devices[did].name if did in indigo.devices else u"- device missing -"
+            name = indigo.devices[did].name if did in indigo.devices else "- device missing -"
             if str(did) not in values.get("removedDevices", "").split(","):
                 return_list.append((did, name))
         return return_list
@@ -242,8 +248,8 @@ class Plugin(indigo.PluginBase):
         if len(dev_id_list)-len(values["removedDevices"].split(",")) >= 8:
             return values
         dev = indigo.device.create(indigo.kProtocol.Plugin, deviceTypeId="Sensor")
-        dev.model = u"8 Channel Network Relay Board"
-        dev.subModel = u"Input"
+        dev.model = "8 Channel Network Relay Board"
+        dev.subModel = "Input"
         dev.replaceOnServer()
         values["createdDevices"] += ","+str(dev.id) if values["createdDevices"] != "" else str(dev.id)
         return values
@@ -253,8 +259,8 @@ class Plugin(indigo.PluginBase):
         if len(dev_id_list)-len(values["removedDevices"].split(",")) >= 8:
             return values
         dev = indigo.device.create(indigo.kProtocol.Plugin, deviceTypeId="Relay")
-        dev.model = u"8 Channel Network Relay Board"
-        dev.subModel = u"Relay"
+        dev.model = "8 Channel Network Relay Board"
+        dev.subModel = "Relay"
         dev.replaceOnServer()
         values["createdDevices"] += ","+str(dev.id) if values["createdDevices"] != "" else str(dev.id)
         return values
@@ -262,8 +268,8 @@ class Plugin(indigo.PluginBase):
     def _add_sprinkler(self, values, dev_id_list):
         """ Devices.xml Callback Method to add a new Sprinkler sub-device. """
         dev = indigo.device.create(indigo.kProtocol.Plugin, deviceTypeId="Sprinkler")
-        dev.model = u"8 Channel Network Relay Board"
-        dev.subModel = u"Irrigation"
+        dev.model = "8 Channel Network Relay Board"
+        dev.subModel = "Irrigation"
         dev.replaceOnServer()
         values["createdDevices"] += ","+str(dev.id) if values["createdDevices"] != "" else str(dev.id)
         return values
@@ -279,14 +285,14 @@ class Plugin(indigo.PluginBase):
     def _pulse_relay(self, action, dev):
         """ Actions.xml Callback Method to pulse a relay. """
         try:
-            self.send_cmd(dev.pluginProps, u"P")
+            self.send_cmd(dev.pluginProps, "P")
         except (socket.error, EOFError) as err:
-            dev.setErrorStateOnServer("Error Pulsing Relay: {}".format(err))
+            dev.setErrorStateOnServer(f"Error Pulsing Relay: {err}")
         except KeyError:
-            dev.setErrorStateOnServer(u"Relay Channel Missing! Configure Device Settings.")
+            dev.setErrorStateOnServer("Relay Channel Missing! Configure Device Settings.")
         else:
             if dev.pluginProps.get("logActions", True):
-                indigo.server.log(u"Sent \"{}\" relay pulse".format(dev.name))
+                indigo.server.log(f"Sent \"{dev.name}\" relay pulse")
             dev.updateStateOnServer("pulseCount", dev.states.get("pulseCount", 0) + 1)
             dev.updateStateOnServer("pulseTimestamp", datetime.now().strftime("%s"))
             dev.updateStateOnServer("onOffState", False)  # Pulse always turns off.
@@ -301,14 +307,15 @@ class Plugin(indigo.PluginBase):
 
     @staticmethod
     def set_device_states():
-        """ Updates Indigo with current devices" states. """
+        """ Updates Indigo with current devices' states. """
         devs = list()
         hosts = list()
+        state = None
         # Build two lists: host/port combos, and (sub)devices.
         for dev in indigo.devices.iter("self"):
             if (dev.enabled and dev.configured and "hostname" in dev.pluginProps
                     and "port" in dev.pluginProps):
-                # Make a list of the plugin"s devices and a set of their hostnames.
+                # Make a list of the plugin's devices and a set of their hostnames.
                 hosts.append((dev.pluginProps["hostname"], dev.pluginProps["port"]))
                 devs.append(dev)
 
@@ -317,33 +324,31 @@ class Plugin(indigo.PluginBase):
             timeout = int(indigo.activePlugin.pluginPrefs.get("timeout", 4))
             try:
                 relay = Telnet(host, int(port), timeout)
-                relay.write("DUMP\r\n")
-                statuses = relay.read_until("OK", timeout).upper()
+                relay.write("DUMP\r\n".encode())
+                statuses = relay.read_until("OK".encode(), timeout).upper()
                 relay.close()
             except (socket.error, EOFError, UnicodeError) as err:
                 for dev in devs:
                     # Update all the sub devices that failed to get queried.
                     if (dev.pluginProps["hostname"], dev.pluginProps["port"]) == (host, port):
-                        dev.setErrorStateOnServer(u"Relay Communication Error: {} ({}:{}/{})"
-                                                  .format(err, host, port, timeout))
+                        dev.setErrorStateOnServer(f"Relay Communication Error: {err} ({host}:{port}/{timeout})")
                 return
 
             # Update all the devices that belong to this hostname/port.
             for dev in devs:
-                chan = dev.pluginProps.get("channel", -1)
+                chan = dev.pluginProps.get("channel", "-1")
                 if (dev.pluginProps["hostname"], dev.pluginProps["port"]) != (host, port):
                     # Device does not match, carry on.
                     continue
                 if dev.deviceTypeId == "Relay":
-                    state = True if statuses.find("RELAYON {}".format(chan)) != -1 else False
+                    state = True if statuses.find(b"RELAYON " + chan.encode()) != -1 else False
                 elif dev.deviceTypeId == "Sensor":
-                    state = True if statuses.find("IH {}".format(chan)) != -1 else False
+                    state = True if statuses.find(b"IH " + chan.encode()) != -1 else False
                 if dev.deviceTypeId != "Sprinkler":
                     if dev.pluginProps.get("logChanges", True):
                         if dev.states["onOffState"] != state:
                             reply = "on" if state else "off"
-                            indigo.server.log(u"Device \"{}\" turned {}"
-                                              .format(dev.name, reply))
+                            indigo.server.log(f"Device \"{dev.name}\" turned {reply}")
                     dev.updateStateOnServer("onOffState", state)
                     continue
 
@@ -357,20 +362,18 @@ class Plugin(indigo.PluginBase):
                     except KeyError:
                         continue
                     # match the relay to a zone and update state & log
-                    state = True if statuses.find("RELAYON {}".format(chan)) != -1 else False
+                    state = True if statuses.find(b"RELAYON " + chan.encode()) != -1 else False
                     if (active_zone != zone and state is True and
                             (dev.pluginProps["PumpControlOn"] is False
                              or zone != int(dev.pluginProps["NumZones"]))):
-                        indigo.server.log(u"Zone \"{} - {}\" unexpectedly turned on"
-                                          .format(dev.name, name))
+                        indigo.server.log(f"Zone \"{dev.name} - {name}\" unexpectedly turned on")
                         dev.updateStateOnServer("unexpectedZone", name)
                         now_active = zone
                     if (active_zone == zone and state is False or
                             (dev.pluginProps["PumpControlOn"] is True
                              and zone == int(dev.pluginProps["NumZones"])
                              and active_zone != 0)):
-                        indigo.server.log(u"Zone \"{} - {}\" unexpectedly turned off"
-                                          .format(dev.name, name))
+                        indigo.server.log(f"Zone \"{dev.name} - {name}\" unexpectedly turned off")
                         now_active = 0
                 if now_active == 0:
                     dev.updateStateOnServer("unexpectedZone", "None")
@@ -380,16 +383,14 @@ class Plugin(indigo.PluginBase):
 
                 dev.updateStateOnServer("activeZone", now_active)
 
-
     @staticmethod
     def send_cmd(values, cmd):
         """ Sends a simple command to the relay board. """
         timeout = indigo.activePlugin.pluginPrefs.get("timeout", 4)
         try:
             relay = Telnet(values["hostname"], int(values["port"]), int(timeout))
-            relay.write("{}{}\r\n".format(cmd, values["channel"]))
+            relay.write(f"{cmd}{values['channel']}\r\n".encode())
             relay.close()
         except (socket.error, EOFError) as err:
-            indigo.server.log(u"Relay Communication Error: {} ({}:{}/{})"
-                              .format(err, values["hostname"], values["port"], timeout))
+            indigo.server.log(f"Relay Communication Error: {err} ({values['hostname']}:{values['port']}/{timeout})")
             raise

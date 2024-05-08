@@ -29,7 +29,7 @@
 				<List class="self" method="_get_device_list" filter="allPluginDevices" dynamicReload="true" />
 			</Field>
 			<Field id="NumZones" type="menu" defaultValue="1" visibleBindingId="irrigationController" visibleBindingValue="true">
-				<Label>Sprinker Zones (Relays):</Label>
+				<Label>Sprinkler Zones (Relays):</Label>
 				<List>
 					<Option value="1">1 Zone</Option>
 					<Option value="2">2 Zones</Option>
