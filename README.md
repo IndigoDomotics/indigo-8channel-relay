@@ -6,7 +6,7 @@ find this plugin on the [Indigo Plugin Store](https://www.indigodomo.com/plugins
 
 This repo includes two technical documents:
 - [Ethnernet IO Controller V5  Instructions.pdf](docs/Ethnernet_IO_Controller_V5_Instructions.pdf) (misspelled on purpose?)
-- [ZM_TCP Protocol 1.0.pdf](docs/ZM_TCP_Proctocol_1.0.pdf)
+- [ZM_TCP Protocol 1.0.pdf](docs/ZM_TCP_Protocol_1.0.pdf)
 
 Both documents came from the retailer. Here's a link to the original auction (no longer active):
 - [eBay: 8 Channel Relay Network IP Relay Web Relay Dual Control Ethernet RJ45 US SHIP](https://www.ebay.com/itm/262874035942)
