@@ -6,12 +6,56 @@
 """
 
 from datetime import datetime
-from telnetlib import Telnet
 import socket
 try:
     import indigo
 except ImportError:
     pass
+
+
+class Telnet:
+    """ Minimal drop-in replacement for telnetlib.Telnet.
+
+    telnetlib was removed from the Python standard library in Python 3.13.
+    This relay board only ever uses a tiny subset of the Telnet API:
+    a TCP connect, a raw write, an optional read until a marker, and a close.
+    No telnet option negotiation is needed. A plain socket is sufficient.
+    """
+
+    def __init__(self, host, port, timeout=None):
+        if timeout is None:
+            self.sock = socket.create_connection((host, int(port)))
+        else:
+            self.sock = socket.create_connection((host, int(port)), timeout=timeout)
+
+    def write(self, buffer):
+        """ Send raw bytes to the remote end. """
+        self.sock.sendall(buffer)
+
+    def read_until(self, match, timeout=None):
+        """ Read until the bytes ``match`` are seen, or until timeout. """
+        if timeout is not None:
+            self.sock.settimeout(timeout)
+        data = bytearray()
+        while True:
+            try:
+                chunk = self.sock.recv(4096)
+            except socket.timeout:
+                break
+            if not chunk:
+                # Connection closed by peer.
+                break
+            data.extend(chunk)
+            if match in data:
+                break
+        return bytes(data)
+
+    def close(self):
+        """ Close the underlying socket. """
+        try:
+            self.sock.close()
+        except OSError:
+            pass
 
 
 class Plugin(indigo.PluginBase):
